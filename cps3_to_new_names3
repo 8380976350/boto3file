@@ -35,7 +35,7 @@ def lambda_handler(event, context):
     today=date.today()
     d1 = today.strftime("%d-%m-%Y")
     
-    new_file_name=file_name+"_"+d1
+    new_file_name=file_name+"_"+d1+file_name_ext.split(".")[-1]
     print(new_file_name) # resultjson_18-09-2022
     
     output_file_name='output/'+new_file_name
