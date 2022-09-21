@@ -1,0 +1,57 @@
+import json
+import boto3
+import io
+import pandas as pd
+import s3fs
+import fsspec
+import csv
+import urllib.parse
+import re 
+from datetime import date
+import uuid
+
+def lambda_handler(event, context):
+    s3 = boto3.client('s3')
+
+    bucket_name=event['Records'][0]['s3']['bucket']['name']
+    oj=event['Records'][0]['s3']['object']['key']
+    
+    s3 = boto3.resource('s3')
+    list_of_files=list(s3.Bucket(bucket_name).objects.filter(Prefix=oj))
+    list_of_files.sort(key=lambda l:l.last_modified) 
+
+    prefix_file_name=list_of_files[-1].key
+    
+    prefix=prefix_file_name.split('/')[0:-1]  
+    file_name_ext=prefix_file_name.split('/')[-1]  
+    file_name=file_name_ext.split(".")[0]
+    
+    today=date.today()
+    d1 = today.strftime("%d-%m-%Y")
+    
+    new_file_name=file_name+"_"+d1+"."+file_name_ext.split(".")[-1]
+    
+    output_file_name='client_sport_input/'+new_file_name
+    print(output_file_name) 
+    
+    input_location=bucket_name+'/'+oj
+    
+    #s3.copy_object(Bucket=bucket_name, CopySource=input_location, Key=output_file_name)
+    
+    s3.Object(bucket_name,output_file_name).copy_from(CopySource=input_location)
+    
+    #copy_source={ Bucket : bucket_name, key :prefix_file_name }
+    
+    #s3.meta.client.copy(copy_source,bucket_name, 'output/')
+    
+    id=uuid.uuid4()
+    
+    step_functions=boto3.client("stepfunctions")
+    
+    step_functions.start_execution(stateMachineArn="arn:aws:states:ap-south-1:392728247299:stateMachine:sport_step_function",name="sport_step_function"+str(id))
+    
+    print("job executed")
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Hello from Lambda!')
+    }
